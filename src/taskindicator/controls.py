@@ -3,13 +3,13 @@
 """The task properties dialog."""
 
 
-from __future__ import print_function
+
 
 import re
 
-import pygtk
-pygtk.require("2.0")
-import gtk
+import gi
+gi.require_version("Gtk", "3.0")
+from gi.repository import Gtk
 
 
 __author__ = "Justin Forest"
@@ -24,7 +24,7 @@ __all__ = [
 ]
 
 
-class Priority(gtk.ComboBox):
+class Priority(Gtk.ComboBox):
     """
     A combo-box with predefined contents, for editing task priority.
     Emulates get_text/set_text methods which work with H, M and L value,
@@ -33,14 +33,14 @@ class Priority(gtk.ComboBox):
     def __init__(self):
         super(Priority, self).__init__()
 
-        self.store = gtk.ListStore(str, str)
+        self.store = Gtk.ListStore(str, str)
         self.store.append(["H", "high"])
         self.store.append(["M", "medium (normal)"])
         self.store.append(["L", "low"])
 
         self.set_model(self.store)
 
-        cell = gtk.CellRendererText()
+        cell = Gtk.CellRendererText()
         self.pack_start(cell, True)
         self.add_attribute(cell, "text", 1)
 
@@ -64,7 +64,7 @@ class Priority(gtk.ComboBox):
             return "M"
 
 
-class Project(gtk.ComboBox):
+class Project(Gtk.ComboBox):
     """
     Project selection combo box.
     TODO: make it editable, to allow adding new projects.
@@ -74,10 +74,10 @@ class Project(gtk.ComboBox):
         self.value = None
 
         super(Project, self).__init__()
-        self.store = gtk.ListStore(str)
+        self.store = Gtk.ListStore(str)
         self.set_model(self.store)
 
-        cell = gtk.CellRendererText()
+        cell = Gtk.CellRendererText()
         self.pack_start(cell, True)
         self.add_attribute(cell, "text", 0)
 
@@ -114,13 +114,13 @@ class Project(gtk.ComboBox):
         return self.store[path][0]
 
 
-class NoteEditor(gtk.ScrolledWindow):
+class NoteEditor(Gtk.ScrolledWindow):
     def __init__(self):
         super(NoteEditor, self).__init__()
-        self.set_policy(gtk.POLICY_ALWAYS, gtk.POLICY_ALWAYS)
+        self.set_policy(Gtk.PolicyType.ALWAYS, Gtk.PolicyType.ALWAYS)
 
-        self._tv = gtk.TextView()
-        self._tv.set_wrap_mode(gtk.WRAP_WORD)
+        self._tv = Gtk.TextView()
+        self._tv.set_wrap_mode(Gtk.WrapMode.WORD)
         self.add(self._tv)
 
     def set_text(self, text):
@@ -130,13 +130,14 @@ class NoteEditor(gtk.ScrolledWindow):
         buf = self._tv.get_buffer()
         text = buf.get_text(
             buf.get_start_iter(),
-            buf.get_end_iter())
+            buf.get_end_iter(),
+            True)
         return text
 
     def has_focus(self):
         return self._tv.has_focus()
 
 
-class Tags(gtk.Entry):
+class Tags(Gtk.Entry):
     def get_tags(self):
         return [t for t in re.split(",\s*", self.get_text()) if t.strip()]

@@ -3,7 +3,7 @@
 """TaskWarrior active task count and duration indicator applet.
 """
 
-from __future__ import print_function
+
 
 __author__ = "Justin Forest"
 __email__ = "hex@umonkey.net"
@@ -19,12 +19,13 @@ import subprocess
 import sys
 import time
 
-import pygtk
-pygtk.require("2.0")
-import gtk
+import gi
+gi.require_version("Gtk", "3.0")
+from gi.repository import Gtk, GLib
 
 try:
-    import appindicator
+    from gi.repository import AppIndicator3
+    #import appindicator
     HAVE_APPINDICATOR = True
 except ImportError:
     HAVE_APPINDICATOR = False
@@ -46,8 +47,8 @@ def get_program_path(command):
 
 
 class BaseIndicator(object):
-    # http://www.pygtk.org/pygtk2reference/gtk-stock-items.html
-    ACTIVE_ICON = gtk.STOCK_MEDIA_PLAY
+    # http://www.pyGtk.org/pygtk2reference/gtk-stock-items.html
+    ACTIVE_ICON = Gtk.STOCK_MEDIA_PLAY
 
     def __init__(self):
         self.stop_item = None
@@ -63,13 +64,13 @@ class BaseIndicator(object):
         Adds action menu items and task placeholders, which are later
         replaced with real recently modified tasks (see set_tasks).
         """
-        self.menu = gtk.Menu()
+        self.menu = Gtk.Menu()
 
         def add_item(label, handler, icon=None):
             if icon is None:
-                item = gtk.MenuItem()
+                item = Gtk.MenuItem()
             else:
-                item = gtk.ImageMenuItem(icon)
+                item = Gtk.ImageMenuItem(icon)
             item.set_label(label)
             item.connect("activate", handler)
             item.show()
@@ -78,32 +79,33 @@ class BaseIndicator(object):
 
         self.task_items = []
         for x in range(10):
-            item = gtk.ImageMenuItem()
+            item = Gtk.ImageMenuItem()
             item.set_label("task placeholder")
             item.connect("activate",
-                         lambda item: self.on_task_selected(item.get_data("task")))
+                         #lambda item: self.on_task_selected(item.get_data("task")))
+                         lambda item: self.on_task_selected(item.task))
             self.menu.append(item)
             self.task_items.append(item)
 
-        self.separator = gtk.SeparatorMenuItem()
+        self.separator = Gtk.SeparatorMenuItem()
         self.menu.append(self.separator)
 
         add_item("Add new task...",
             lambda *args: self.on_add_task(),
-            gtk.STOCK_NEW)
+            Gtk.STOCK_NEW)
         add_item("Search tasks...",
             lambda *args: self.on_toggle(),
-            gtk.STOCK_FIND)
+            Gtk.STOCK_FIND)
         self.stop_item = add_item("Stop all running tasks",
             lambda *args: self.on_stop_all(),
-            gtk.STOCK_STOP)
+            Gtk.STOCK_STOP)
         if self.can_pull():
             add_item("Pull tasks",
                 lambda *args: self.on_pull(),
-                gtk.STOCK_REFRESH)
+                Gtk.STOCK_REFRESH)
         add_item("Quit",
             lambda *args: self.on_quit(),
-            gtk.STOCK_QUIT)
+            Gtk.STOCK_QUIT)
 
     def setup_icon(self):
         util.log("WARNING: setup_icon not implimented")
@@ -126,14 +128,15 @@ class BaseIndicator(object):
                     label = item.get_children()[0]
                     label.set_markup("<b>%s</b>" % desc)
 
-                    icon = gtk.image_new_from_stock(self.ACTIVE_ICON,
-                                                    gtk.ICON_SIZE_MENU)
+                    icon = Gtk.Image.new_from_stock(self.ACTIVE_ICON,
+                                                    Gtk.IconSize.MENU)
                     item.set_image(icon)
                 else:
                     item.set_label(desc)
                     item.set_image(None)
 
-                item.set_data("task", task)
+                #item.set_data("task", task)
+                item.task = task
                 item.show()
 
         if tasks:
@@ -163,41 +166,41 @@ class BaseIndicator(object):
         util.log("on_pull not handled")
 
 
-class UbuntuIndicator(BaseIndicator):
+class AppIndicator(BaseIndicator):
     """
     AppIndicator based icon
 
-    Used only if appindicator is available and running.
+    Used only if AppIndicator3 is available and running.
     """
     appname = "task-indicator"
     icon = "taskui"
     icon_attn = "taskui-active"
 
     def setup_icon(self):
-        self.indicator = appindicator.Indicator(self.appname,
-            self.icon, appindicator.CATEGORY_APPLICATION_STATUS)
+        self.indicator = AppIndicator3.Indicator.new(self.appname,
+            self.icon, AppIndicator3.IndicatorCategory.APPLICATION_STATUS)
 
         icondir = os.getenv("TASK_INDICATOR_ICONDIR")
         if icondir:
             self.indicator.set_icon_theme_path(icondir)
             # util.log("Appindicator theme path: {0}, wanted: {1}".format(self.indicator.get_icon_theme_path(), icondir))
 
-        self.indicator.set_status(appindicator.STATUS_ACTIVE)
+        self.indicator.set_status(AppIndicator3.IndicatorStatus.ACTIVE)
         self.indicator.set_attention_icon(self.icon_attn)
 
         self.indicator.set_menu(self.menu)
 
     def set_idle(self):
-        self.indicator.set_label("Idle")
-        self.indicator.set_status(appindicator.STATUS_ACTIVE)
+        self.indicator.set_label("Idle", "")
+        self.indicator.set_status(AppIndicator3.IndicatorStatus.ACTIVE)
         self.stop_item.hide()
 
     def set_running(self, count, duration):
-        self.indicator.set_status(appindicator.STATUS_ATTENTION)
+        self.indicator.set_status(AppIndicator3.IndicatorStatus.ATTENTION)
         self.stop_item.show()
 
         msg = "{0}/{1}".format(count, duration)
-        self.indicator.set_label(msg)
+        self.indicator.set_label(msg, "")
 
     @classmethod
     def is_available(cls):
@@ -220,19 +223,19 @@ class UbuntuIndicator(BaseIndicator):
 
 class GtkIndicator(BaseIndicator):
     def setup_icon(self):
-        self.icon = gtk.StatusIcon()
+        self.icon = Gtk.StatusIcon()
         self.icon.set_from_icon_name("taskui")
         self.icon.connect("activate",
                           lambda *args: self.on_toggle())
         self.icon.connect("popup-menu", self.on_menu)
-        self.icon.set_tooltip("TaskWarrior")
+        self.icon.set_tooltip_text("TaskWarrior")
 
     def on_menu(self, icon, button, click_time):
-        self.menu.popup(None, None, gtk.status_icon_position_menu, button, click_time, self.icon)
+        self.menu.popup(None, None, Gtk.status_icon_position_menu, button, click_time, self.icon)
 
     def set_idle(self):
         self.icon.set_from_icon_name("taskui")
-        self.icon.set_tooltip("No running tasks")
+        self.icon.set_tooltip_text("No running tasks")
         self.stop_item.hide()
 
     def set_running(self, count, duration):
@@ -240,9 +243,9 @@ class GtkIndicator(BaseIndicator):
         self.stop_item.show()
 
         if count == 1:
-            self.icon.set_tooltip("%s" % duration)
+            self.icon.set_tooltip_text("%s" % duration)
         else:
-            self.icon.set_tooltip("%u tasks, %s" % (count, duration))
+            self.icon.set_tooltip_text("%u tasks, %s" % (count, duration))
 
 
 class Checker(object):
@@ -263,9 +266,9 @@ class Checker(object):
         self.search_dialog = dialogs.Search(self.database)
 
     def setup_indicator(self):
-        if UbuntuIndicator.is_available():
+        if AppIndicator.is_available():
             util.log("AppIndicator is available, using it.")
-            self.indicator = UbuntuIndicator()
+            self.indicator = AppIndicator()
         else:
             util.log("AppIndicator is not available, using Gtk status icon.")
             self.indicator = GtkIndicator()
@@ -278,8 +281,7 @@ class Checker(object):
         self.indicator.on_task_selected = self.on_task_selected
 
     def menu_add_tasks(self):
-        tasks = filter(lambda t: t["status"] == "pending",
-                       self.database.get_tasks())
+        tasks = [t for t in self.database.get_tasks() if t["status"] == "pending"]
 
         tasks = sorted(tasks,
                        key=lambda t: t["modified"],
@@ -323,7 +325,7 @@ class Checker(object):
                 if "start" in task:
                     self.database.stop_task(task.id())
 
-        gtk.idle_add(timer)
+        Gtk.idle_add(timer)
 
     def on_quit(self):
         """Ends the applet"""
@@ -331,7 +333,8 @@ class Checker(object):
 
     def on_timer(self):
         """Timer handler which updates the list of tasks and the status."""
-        gtk.timeout_add(FREQUENCY * 1000, self.on_timer)
+        #Gtk.timeout_add(FREQUENCY * 1000, self.on_timer)
+        GLib.timeout_add(FREQUENCY * 1000, self.on_timer)
 
         if self.database.modified_since(self.database_ts):
             util.log("Task database changed.")
@@ -393,7 +396,7 @@ def show_existing_instance():
                     os.kill(pid, signal.SIGUSR1)
                     util.log("Sent SIGUSR1 to process %u." % pid)
                     return True
-                except Exception, e:
+                except Exception as e:
                     util.log("Error sending SIGUSR1 to process %u: %s" % (pid, e))
 
     return False
@@ -408,4 +411,4 @@ def main():
     app = Checker()
     app.main()
     # app.search_dialog.show_all()
-    gtk.main()
+    Gtk.main()

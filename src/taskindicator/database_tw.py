@@ -1,6 +1,6 @@
 # encoding=utf-8
 
-import gtk
+from gi.repository import Gtk
 import json
 import os
 import re
@@ -14,7 +14,7 @@ FREQUENCY = 1
 
 
 def save_note(task_id, note):
-    if isinstance(note, unicode):
+    if isinstance(note, str):
         note = note.encode("utf-8")
 
     folder = os.path.expanduser("~/.task/notes")
@@ -31,7 +31,7 @@ def read_note(task_id):
     path = os.path.join(folder, task_id)
     if os.path.exists(path):
         with open(path, "rb") as f:
-            f.read(note)
+            note = f.read()
 
 
 def get_database_folder():
@@ -141,7 +141,7 @@ class Tasks(object):
             return {}
 
         with open(database, "rb") as f:
-            raw_data = f.read()
+            raw_data = f.read().decode("utf-8")
 
         tasks = []
         for line in raw_data.rstrip().split("\n"):
@@ -156,7 +156,7 @@ class Tasks(object):
                     continue
                 k, v = kw.split(":", 1)
                 v = v.replace("\/", "/")  # FIXME: must be a better way
-                v = v.decode("utf-8")
+                #v = v.decode("utf-8")
                 if k == "tags":
                     v = v.split(",")
                 task[k] = v
@@ -228,7 +228,7 @@ class Database(object):
         projects = {}
         for task in self.get_tasks():
             projects[task["project"]] = True
-        return projects.keys()
+        return list(projects.keys())
 
     def refresh(self):
         self._tasks = None
@@ -261,7 +261,7 @@ class Database(object):
     def update_task(self, task_id, properties):
         command = ["task", task_id, "mod"]
 
-        for k, v in properties.items():
+        for k, v in list(properties.items()):
             if k == "uuid":
                 continue
             if k == "tags":
@@ -280,7 +280,7 @@ class Database(object):
     def add_task(self, properties):
         command = ["task", "add"]
 
-        for k, v in properties.items():
+        for k, v in list(properties.items()):
             if k == "summary":
                 command.append(v)
             elif k in ("project", "priority"):
@@ -297,7 +297,7 @@ class Database(object):
     def update_task(self, task_id, properties):
         command = ["task", task_id, "mod"]
 
-        for k, v in properties.items():
+        for k, v in list(properties.items()):
             if k in ("project", "priority"):
                 command.append("%s:%s" % (k, v))
             elif k == "summary":

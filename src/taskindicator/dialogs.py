@@ -1,16 +1,25 @@
 # encoding=utf-8
 
-from __future__ import print_function
 
-import gtk
+
+from gi.repository import Gdk, Gtk, GLib
 import time
 import webbrowser
 
 from taskindicator import util
 from taskindicator.controls import *
 
+orig_pack_start = Gtk.Box.pack_start
+def pack_start(self, child, expand=True, fill=True, padding=0):
+    orig_pack_start(self, child, expand, fill, padding)
+Gtk.Box.pack_start = pack_start
 
-class Search(gtk.Window):
+orig_pack_end = Gtk.Box.pack_end
+def pack_end(self, child, expand=True, fill=True, padding=0):
+    orig_pack_end(self, child, expand, fill, padding)
+Gtk.Box.pack_end = pack_end
+
+class Search(Gtk.Window):
     def __init__(self, database, parent=None):
         super(Search, self).__init__()
 
@@ -29,16 +38,16 @@ class Search(gtk.Window):
         # self.set_title("Task search")
         self.set_border_width(4)
         self.set_default_size(600, 600)
-        self.set_position(gtk.WIN_POS_CENTER)
-        # self.add_buttons(gtk.STOCK_CLOSE, gtk.RESPONSE_REJECT)
+        self.set_position(Gtk.WindowPosition.CENTER)
+        # self.add_buttons(Gtk.STOCK_CLOSE, Gtk.ResponseType.REJECT)
 
         self.set_icon_name("taskui")
 
     def _setup_popup_menu(self):
-        self.pmenu = gtk.Menu()
+        self.pmenu = Gtk.Menu()
 
         def add_item(label, handler):
-            item = gtk.MenuItem(label)
+            item = Gtk.MenuItem(label)
             item.connect("activate", handler)
             self.pmenu.append(item)
             return item
@@ -52,7 +61,7 @@ class Search(gtk.Window):
             "Open linked web page", self._on_task_links)
 
     def _on_popup_menu(self, widget, event):
-        if event.type == gtk.gdk.BUTTON_PRESS and event.button == 3:
+        if event.type == Gdk.EventType.BUTTON_PRESS and event.button == 3:
             self.pmenu.popup(None, None, None, event.button, event.time)
 
     def _on_task_start(self, item):
@@ -88,15 +97,15 @@ class Search(gtk.Window):
                     webbrowser.open(part)
 
     def setup_controls(self):
-        self.vbox = gtk.VBox(homogeneous=False, spacing=4)
+        self.vbox = Gtk.VBox(homogeneous=False, spacing=4)
         self.add(self.vbox)
 
-        self.query_ctl = gtk.Entry()
+        self.query_ctl = Gtk.Entry()
         self.query_ctl.connect("changed", self._on_query_changed)
         self.vbox.pack_start(self.query_ctl, expand=False,
             fill=True, padding=4)
 
-        self.model = model = gtk.ListStore(
+        self.model = model = Gtk.ListStore(
             str,   # 0 id
             str,   # 1 status
             str,   # 2 project
@@ -110,23 +119,23 @@ class Search(gtk.Window):
         self.model_filter = model_filter = model.filter_new()
         model_filter.set_visible_func(self.filter_tasks)
 
-        view = gtk.TreeView()
+        view = Gtk.TreeView()
         view.set_model(model_filter)
         view.connect("row_activated", self._on_row_activated)
         view.connect("cursor-changed", self._on_row_changed)
         self.tv = view
 
-        lcell = gtk.CellRendererText()
+        lcell = Gtk.CellRendererText()
         lcell.set_property("xalign", 0.0)
 
-        mcell = gtk.CellRendererText()
+        mcell = Gtk.CellRendererText()
         mcell.set_property("xalign", 0.5)
 
-        rcell = gtk.CellRendererText()
+        rcell = Gtk.CellRendererText()
         rcell.set_property("xalign", 1.0)
 
         def add_column(text, cell, data_idx):
-            col = gtk.TreeViewColumn(text, cell, text=data_idx)
+            col = Gtk.TreeViewColumn(text, cell, text=data_idx)
             col.set_cell_data_func(cell, self.cell_data)
             # col.set_sort_column_id(data_idx)
             view.append_column(col)
@@ -135,8 +144,8 @@ class Search(gtk.Window):
         add_column("Pri", mcell, 5)
         add_column("Description", lcell, 3)
 
-        scroll = gtk.ScrolledWindow()
-        scroll.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_ALWAYS)
+        scroll = Gtk.ScrolledWindow()
+        scroll.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.ALWAYS)
         # scroll.add_with_viewport(view)
         scroll.add(view)
 
@@ -146,16 +155,16 @@ class Search(gtk.Window):
 
     def setup_bottom_controls(self):
         """Fills in the bottom bar (checkboxes and buttons)."""
-        hbox = gtk.HBox(homogeneous=False, spacing=4)
+        hbox = Gtk.HBox(homogeneous=False, spacing=4)
         self.vbox.pack_start(hbox, expand=False, fill=True)
 
-        self.show_all_button = gtk.CheckButton("Show completed")
+        self.show_all_button = Gtk.CheckButton("Show completed")
         hbox.pack_start(self.show_all_button, expand=True, fill=True)
 
-        self.close_button = gtk.Button("Close")
+        self.close_button = Gtk.Button("Close")
         hbox.pack_end(self.close_button, expand=False, fill=False)
 
-        self.add_button = gtk.Button("Add...")
+        self.add_button = Gtk.Button("Add...")
         hbox.pack_end(self.add_button, expand=False, fill=False)
 
     def setup_signals(self):
@@ -166,7 +175,7 @@ class Search(gtk.Window):
         self.connect("delete_event", self._on_delete)
         self.connect("key-press-event", self._on_keypress)
 
-    def filter_tasks(self, model, iter):
+    def filter_tasks(self, model, iter, data=None):
         if self.query is None:
             return True
 
@@ -179,9 +188,9 @@ class Search(gtk.Window):
         for field in (0, 2, 7):
             raw = model.get_value(iter, field)
             if raw:
-                txt = unicode(raw, "utf-8")
+                txt = str(raw, "utf-8")
                 parts.append(txt.lower())
-        fulltext = u" ".join(parts)
+        fulltext = " ".join(parts)
 
         for word in self.query.lower().split():
             if word.startswith("-"):
@@ -252,11 +261,11 @@ class Search(gtk.Window):
 
         def present():
             self.present()
-            self.window.focus()
+            #self.window.focus()
             self.grab_focus()
             self.query_ctl.grab_focus()
 
-        gtk.idle_add(present)
+        Gtk.idle_add(present)
 
     def _on_delete(self, *args):
         """Instead of destroying the window on close, just hide it."""
@@ -271,7 +280,7 @@ class Search(gtk.Window):
 
     def _on_row_changed(self, view):
         selection = view.get_selection()
-        selection.set_mode(gtk.SELECTION_SINGLE)
+        selection.set_mode(Gtk.SelectionMode.SINGLE)
         tree_model, tree_iter = selection.get_selected()
 
         if not tree_iter:
@@ -316,7 +325,7 @@ class Search(gtk.Window):
     def _on_query_changed(self, ctl):
         """Handles the query change.  Stores the new query in self.query for
         quicker access, then refilters the tree."""
-        self.query = unicode(ctl.get_text(), "utf-8").lower()
+        self.query = str(ctl.get_text(), "utf-8").lower()
         self.model_filter.refilter()
 
     def _on_close(self, widget):
@@ -329,7 +338,7 @@ class Search(gtk.Window):
         self.refresh_table()
 
     def _on_keypress(self, widget, event):
-        if event.keyval == gtk.keysyms.Escape:
+        if event.keyval == Gdk.KEY_Escape:
             self.hide()
 
     def on_activate_task(self, uuid):
@@ -342,7 +351,7 @@ class Search(gtk.Window):
             Properties.show_task(self.database, task)
 
 
-class TaskDialog(gtk.Window):
+class TaskDialog(Gtk.Window):
     def __init__(self):
         super(TaskDialog, self).__init__()
         self.connect("key-press-event", self.on_keypress)
@@ -352,16 +361,16 @@ class TaskDialog(gtk.Window):
 
         def present():
             self.present()
-            self.window.focus()
+            #self.window.focus()
             self.grab_focus()
             self.description.grab_focus()
 
-        gtk.idle_add(present)
+        GLib.idle_add(present)
 
     def on_keypress(self, widget, event):
-        if event.keyval == gtk.keysyms.Escape:
+        if event.keyval == Gdk.KEY_Escape:
             self.destroy()
-        if event.keyval == gtk.keysyms.Return:
+        if event.keyval == Gdk.KEY_Return:
             if not self.notes.has_focus():
                 self.on_close(widget)
 
@@ -375,30 +384,30 @@ class New(TaskDialog):
 
         self.set_border_width(10)
 
-        self.grid = gtk.Table(6, 2)
+        self.grid = Gtk.Table(6, 2)
         self.add(self.grid)
 
         def add_label(text):
-            l = gtk.Label(text)
+            l = Gtk.Label(label=text)
             l.set_alignment(0, 0.5)
             self.grid.attach(l, 0, 1, row, row + 1,
-                xoptions=gtk.FILL, yoptions=gtk.FILL, xpadding=2, ypadding=2)
+                xoptions=Gtk.AttachOptions.FILL, yoptions=Gtk.AttachOptions.FILL, xpadding=2, ypadding=2)
 
         def add_control(ctl, label, vexpand=False):
-            yoptions = gtk.FILL
+            yoptions = Gtk.AttachOptions.FILL
             if vexpand:
-                yoptions |= gtk.EXPAND
+                yoptions |= Gtk.AttachOptions.EXPAND
 
             self.grid.attach(ctl, 1, 2, row, row + 1,
                 yoptions=yoptions, xpadding=2, ypadding=2)
             add_label(label)
 
         row = 0
-        self.description = gtk.Entry()
+        self.description = Gtk.Entry()
         add_control(self.description, "Summary:")
 
         row += 1
-        self.project = gtk.Entry()  # Project()
+        self.project = Gtk.Entry()  # Project()
         #self.project.refresh(self.database.get_projects())
         add_control(self.project, "Project:")
 
@@ -411,28 +420,28 @@ class New(TaskDialog):
         add_control(self.notes, "Description:", vexpand=True)
 
         row += 1
-        self.bbx = gtk.HButtonBox()
+        self.bbx = Gtk.HButtonBox()
         self.grid.attach(self.bbx, 0, 2, row, row + 1,
-            yoptions=gtk.FILL, xpadding=2, ypadding=2)
+            yoptions=Gtk.AttachOptions.FILL, xpadding=2, ypadding=2)
 
-        self.start = gtk.Button("Save")
+        self.start = Gtk.Button("Save")
         self.start.connect("clicked", self.on_save)
         self.bbx.add(self.start)
 
-        self.close = gtk.Button("Cancel")
+        self.close = Gtk.Button("Cancel")
         self.close.connect("clicked", self.on_close)
         self.bbx.add(self.close)
 
         self.set_title("Adding new task")
-        self.set_position(gtk.WIN_POS_CENTER)
+        self.set_position(Gtk.WindowPosition.CENTER)
         self.set_default_size(600, 400)
 
         self.set_icon_name("taskui")
 
     def on_keypress(self, widget, event):
-        if event.keyval == gtk.keysyms.Escape:
+        if event.keyval == Gdk.KEY_Escape:
             self.destroy()
-        if event.keyval == gtk.keysyms.Return:
+        if event.keyval == Gdk.KEY_Return:
             if not self.notes.has_focus():
                 self.on_save(widget)
                 self.destroy()
@@ -456,7 +465,7 @@ class New(TaskDialog):
         self.destroy()
 
 
-class Properties(gtk.Window):
+class Properties(Gtk.Window):
     def __init__(self, database):
         super(Properties, self).__init__()
         self.connect("delete_event", self.on_delete_event)
@@ -466,35 +475,35 @@ class Properties(gtk.Window):
 
         self.set_border_width(10)
 
-        self.grid = gtk.Table(6, 2)
+        self.grid = Gtk.Table(6, 2)
         self.add(self.grid)
 
         def add_label(text):
-            l = gtk.Label(text)
+            l = Gtk.Label(label=text)
             l.set_alignment(0, 0.5)
             self.grid.attach(l, 0, 1, row, row + 1,
-                xoptions=gtk.FILL, yoptions=gtk.FILL, xpadding=2, ypadding=2)
+                xoptions=Gtk.AttachOptions.FILL, yoptions=Gtk.AttachOptions.FILL, xpadding=2, ypadding=2)
 
         def add_control(ctl, label, vexpand=False):
-            yoptions = gtk.FILL
+            yoptions = Gtk.AttachOptions.FILL
             if vexpand:
-                yoptions |= gtk.EXPAND
+                yoptions |= Gtk.AttachOptions.EXPAND
 
             self.grid.attach(ctl, 1, 2, row, row + 1,
                 yoptions=yoptions, xpadding=2, ypadding=2)
             add_label(label)
 
         row = 0
-        self.uuid = gtk.Entry()
+        self.uuid = Gtk.Entry()
         self.uuid.set_property("editable", False)
         add_control(self.uuid, "Task id:")
 
         row += 1
-        self.description = gtk.Entry()
+        self.description = Gtk.Entry()
         add_control(self.description, "Summary:")
 
         row += 1
-        self.project = gtk.Entry()  # Project()
+        self.project = Gtk.Entry()  # Project()
         #self.project.refresh(self.database.get_projects())
         add_control(self.project, "Project:")
 
@@ -507,29 +516,29 @@ class Properties(gtk.Window):
         add_control(self.notes, "Description:", vexpand=True)
 
         row += 1
-        self.completed = gtk.CheckButton("completed")
+        self.completed = Gtk.CheckButton("completed")
         self.grid.attach(self.completed, 1, 2, row, row + 1,
-            yoptions=gtk.FILL, xpadding=2, ypadding=2)
+            yoptions=Gtk.AttachOptions.FILL, xpadding=2, ypadding=2)
 
         row += 1
-        self.bbx = gtk.HButtonBox()
+        self.bbx = Gtk.HButtonBox()
         self.grid.attach(self.bbx, 0, 2, row, row + 1,
-            yoptions=gtk.FILL, xpadding=2, ypadding=2)
+            yoptions=Gtk.AttachOptions.FILL, xpadding=2, ypadding=2)
 
-        self.start = gtk.Button("Start")
+        self.start = Gtk.Button("Start")
         self.start.connect("clicked", self.on_start_stop)
         self.bbx.add(self.start)
 
-        self.browse = gtk.Button("Open links")
+        self.browse = Gtk.Button("Open links")
         self.browse.connect("clicked", self._on_browse)
         self.bbx.add(self.browse)
 
-        self.close = gtk.Button("Close")
+        self.close = Gtk.Button("Close")
         self.close.connect("clicked", self.on_close)
         self.bbx.add(self.close)
 
         self.set_title("Task properties")
-        self.set_position(gtk.WIN_POS_CENTER)
+        self.set_position(Gtk.WindowPosition.CENTER)
         self.set_default_size(600, 400)
 
         self.set_icon_name("taskui")
@@ -538,7 +547,8 @@ class Properties(gtk.Window):
 
     def on_timer(self):
         """Updates the start/stop button periodically."""
-        gtk.timeout_add(1000, self.on_timer)
+        #Gtk.timeout_add(1000, self.on_timer)
+        GLib.timeout_add(1000, self.on_timer)
 
         if self.get_property("visible"):
             self.set_start_stop_label()

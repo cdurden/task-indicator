@@ -107,7 +107,7 @@ class Database(object):
         rows = cur.fetchall()
 
         header = ["id", "created", "modified", "project", "summary", "status", "priority", "description"]
-        return [Task.from_row(zip(header, row), self) for row in rows]
+        return [Task.from_row(list(zip(header, row)), self) for row in rows]
 
     def add_task(self, data):
         ts = int(time.time())
@@ -153,7 +153,7 @@ class Database(object):
         projects = {}
         for task in self.get_tasks():
             projects[task.get_project()] = True
-        return projects.keys()
+        return list(projects.keys())
 
     def get_task_info(self, task_id):
         cur = self.conn.cursor()
@@ -162,7 +162,7 @@ class Database(object):
         rows = cur.fetchall()
 
         header = ["id", "created", "modified", "project", "summary", "status", "priority", "description"]
-        task = Task.from_row(zip(header, rows[0]), self)
+        task = Task.from_row(list(zip(header, rows[0])), self)
         #print(task)
         return task
 
@@ -201,4 +201,4 @@ class Database(object):
         cur.execute("SELECT id, ts, status, duration FROM changes WHERE task_id = ? ORDER BY id DESC LIMIT 1", (task_id, ))
         row = cur.fetchone()
         if row is not None:
-            return dict(zip(("id", "ts", "status", "duration"), row))
+            return dict(list(zip(("id", "ts", "status", "duration"), row)))

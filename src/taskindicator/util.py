@@ -1,6 +1,6 @@
 # encoding=utf-8
 
-from __future__ import print_function
+
 
 import calendar
 import datetime
@@ -8,9 +8,9 @@ import json
 import subprocess
 import sys
 
-import pygtk
-pygtk.require("2.0")
-import gtk
+import gi
+gi.require_version("Gtk", "3.0")
+from gi.repository import Gtk
 
 
 def log(msg, *args):
@@ -25,7 +25,7 @@ def run_command(command, fail=True):
     out = p.communicate()[0]
     if p.returncode and fail:
         raise RuntimeError("Command failed with code %s." % p.returncode)
-    return out
+    return out.decode("utf-8")
 
 
 def strip_description(text):
@@ -47,7 +47,7 @@ def strip_description(text):
 
 
 def get_icon_path(icon_name):
-    theme = gtk.icon_theme_get_default()
+    theme = Gtk.IconTheme.get_default()
 
     icon = theme.lookup_icon(icon_name, 0, 0)
     if icon:

@@ -1,16 +1,16 @@
 # encoding=utf-8
 
-from __future__ import print_function
+
 
 import fcntl
-import gobject
-import gtk
+from gi.repository import GObject
+from gi.repository import Gtk
 import os
-import pango
+from gi.repository import Pango
 import subprocess
 
 
-class ProcessRunner(gtk.Window):
+class ProcessRunner(Gtk.Window):
     def __init__(self):
         super(ProcessRunner, self).__init__()
         self.setup_window()
@@ -21,31 +21,31 @@ class ProcessRunner(gtk.Window):
         self.set_default_size(700, 400)
         self.set_title("Getting external tasks")
         self.set_border_width(4)
-        self.set_position(gtk.WIN_POS_CENTER)
+        self.set_position(Gtk.WindowPosition.CENTER)
         self.set_icon_name("taskui")
 
         def make_text():
-            self.tv = gtk.TextView()
-            font = pango.FontDescription("monospace")
+            self.tv = Gtk.TextView()
+            font = Pango.FontDescription("monospace")
             self.tv.modify_font(font)
 
-            scroll = gtk.ScrolledWindow()
+            scroll = Gtk.ScrolledWindow()
             scroll.add(self.tv)
 
             return scroll
 
         def make_button():
-            btn = gtk.Button("Close")
+            btn = Gtk.Button("Close")
             btn.connect("activate", self.on_close_clicked)
             btn.set_sensitive(False)
             self.close_button = btn
             return btn
 
-        vbox = gtk.VBox(homogeneous=False, spacing=4)
+        vbox = Gtk.VBox(homogeneous=False, spacing=4)
         self.add(vbox)
 
         ctl = make_text()
-        vbox.pack_start(ctl)
+        vbox.pack_start(ctl, True, True, 0)
 
         ctl = make_button()
         vbox.pack_start(ctl, expand=False, fill=False)
@@ -78,7 +78,7 @@ class ProcessRunner(gtk.Window):
                 self.close_button.set_sensitive(True)
             return still_running
 
-        tm = gobject.timeout_add(100, update)
+        tm = GObject.timeout_add(100, update)
         print(tm)
 
     @classmethod
